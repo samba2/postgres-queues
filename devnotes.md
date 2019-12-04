@@ -1,0 +1,1 @@
+https://tnishimura.github.io/articles/queues-in-postgresql/
