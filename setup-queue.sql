@@ -17,6 +17,24 @@ CREATE TABLE bank_transactions (
     amount            numeric(20,2) DEFAULT 0 NOT NULL
 );
 
+-- TODO this should not be needed
+CREATE OR REPLACE FUNCTION NOTIFY() RETURNS trigger AS
+$BODY$
+BEGIN
+    PERFORM pg_notify('banktransactions', '');
+    RETURN new;
+END;
+$BODY$
+LANGUAGE 'plpgsql';
+
+DROP TRIGGER IF EXISTS bank_transactions_trigger ON bank_transactions;
+CREATE TRIGGER bank_transactions_trigger
+AFTER INSERT
+ON bank_transactions
+FOR EACH ROW
+EXECUTE PROCEDURE notify();
+
+
 INSERT INTO bank_transactions (iban, amount) VALUES ('DE00000000000000000001', 10);
 INSERT INTO bank_transactions (iban, amount) VALUES ('DE00000000000000000003', -11);
 INSERT INTO bank_transactions (iban, amount) VALUES ('DE00000000000000000002', 30);

@@ -1,11 +1,37 @@
 import psycopg2
 import time
+import select
 
 conn = psycopg2.connect("dbname=postgres user=samba")
+CHANNEL="banktransactions"
 
-while True:
+def main():
+    notify_conn = psycopg2.connect("dbname=postgres user=samba")
+    notify_conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+
+    curs = notify_conn.cursor().execute(f"LISTEN {CHANNEL};")
+    print(f"Waiting for notifications on channel '{CHANNEL}'")
+
+    # TODO implement "picking up work in the queue" and then wait for events
+    # this does not work
+    while process_one_transaction() is not None:
+        pass
+
+    while True:
+        if select.select([notify_conn],[],[],5) == ([],[],[]):
+            print("Timeout")
+        else:
+            notify_conn.poll()
+            while notify_conn.notifies:
+                # pop is important to consume event
+                notify = notify_conn.notifies.pop(0)
+                print("Got NOTIFY:", notify.pid, notify.channel, notify.payload)
+                process_one_transaction()
+    notify_conn.close()
+    conn.close()
+
+def process_one_transaction():
     cursor = conn.cursor()
-
     cursor.execute("""
     DELETE FROM bank_transactions
     WHERE id = (
@@ -21,8 +47,7 @@ while True:
     transaction=cursor.fetchone()
     if transaction is None:
         print("No transaction found")
-        time.sleep(1)
-        continue
+        return None
 
     iban=transaction[2]
     amount=transaction[3]
@@ -50,6 +75,5 @@ while True:
 
     cursor.close()
     conn.commit()
-    time.sleep(1)
 
-conn.close()
+if __name__ == '__main__': main()
