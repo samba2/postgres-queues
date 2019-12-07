@@ -23,21 +23,21 @@ ON queue
 FOR EACH ROW
 EXECUTE PROCEDURE queue_notify();
 
-CREATE OR REPLACE FUNCTION read_queue_entry() RETURNS text AS
+CREATE OR REPLACE FUNCTION read_queue_entry(queue_name text) RETURNS SETOF text AS
 $BODY$
 DECLARE
-    val text;
+    QUEUE_READ_STATEMENT constant text := 
+        'DELETE FROM %s '
+        'WHERE id = ( '
+            'SELECT id '
+            'FROM %s '
+            'ORDER BY id '
+            'FOR UPDATE SKIP LOCKED '
+            'LIMIT 1 '
+        ') '
+        'RETURNING value';
 BEGIN
-    DELETE FROM queue
-    WHERE id = (
-    SELECT id
-    FROM queue
-    ORDER BY id
-    FOR UPDATE SKIP LOCKED
-    LIMIT 1
-    )
-    RETURNING value into val;
-    return val;
+    RETURN QUERY EXECUTE format(QUEUE_READ_STATEMENT, queue_name, queue_name);
 END;
 $BODY$
 LANGUAGE 'plpgsql';
