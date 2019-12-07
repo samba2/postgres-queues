@@ -11,10 +11,28 @@ cursor = conn.cursor()
 
 def main():
     while True:
-        entry = read_queue()
+        entry = read_queue_plpgsql()
         print("Received: " + entry)
 
-def read_queue():
+
+def read_queue_plpgsql():
+    def read_single_queue_entry():
+        cursor.execute('SELECT read_queue_entry()')
+        return cursor.fetchone()[0]
+
+    entry = read_single_queue_entry()        
+    if entry:
+        return entry
+    if select.select([conn],[],[],60) == ([],[],[]):
+        pass
+    else:
+        conn.poll()
+        while conn.notifies:
+            conn.notifies.pop(0) # consume event
+            return read_single_queue_entry()
+
+
+def read_queue_all_python():
     entry=read_queue_entry()
     if entry:
         return entry
