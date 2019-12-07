@@ -5,7 +5,7 @@ import select
 CHANNEL="queue"
 
 conn = psycopg2.connect("dbname=postgres user=samba")
-conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+conn.autocommit = True
 conn.cursor().execute(f"LISTEN {CHANNEL};")
 cursor = conn.cursor()
 
@@ -15,6 +15,7 @@ def main():
         print("Received: " + entry)
 
 
+# TODO make more robust (ignore events without value)
 def read_queue_plpgsql():
     def read_single_queue_entry():
         cursor.execute('SELECT read_queue_entry()')
@@ -28,7 +29,7 @@ def read_queue_plpgsql():
     else:
         conn.poll()
         while conn.notifies:
-            conn.notifies.pop(0) # consume event
+            notify = conn.notifies.pop(0)
             return read_single_queue_entry()
 
 
