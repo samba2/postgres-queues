@@ -1,11 +1,13 @@
-CREATE OR REPLACE FUNCTION make_queue(queue_name text) RETURNS void AS
+CREATE OR REPLACE FUNCTION create_queue(queue_name text) RETURNS void AS
 $BODY$
+DECLARE
+    queue_table_name text := 'queue_' || queue_name;
 BEGIN
     EXECUTE format('
         CREATE TABLE %s (  
         value       text, 
         id          bigserial PRIMARY KEY)'
-        , queue_name);
+        , queue_table_name);
 
     EXECUTE format('
         CREATE TRIGGER %s_trigger
@@ -13,9 +15,9 @@ BEGIN
         ON %s
         FOR EACH ROW
         EXECUTE PROCEDURE generic_queue_notify()'
-        , queue_name, queue_name);
+        , queue_table_name, queue_table_name);
 
-    RAISE NOTICE 'Queue "queue_name" was successfully created.';
+    RAISE NOTICE 'Table "%" was successfully created.', queue_table_name;
 END;
 $BODY$
 LANGUAGE 'plpgsql';
@@ -34,9 +36,11 @@ LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION drop_queue(queue_name text) RETURNS void AS
 $BODY$
+DECLARE
+    queue_table_name text := 'queue_' || queue_name;
 BEGIN
-    EXECUTE format('DROP TABLE IF EXISTS %s', queue_name);
-    RAISE NOTICE 'Queue "queue_name" has been removed.';
+    EXECUTE format('DROP TABLE IF EXISTS %s', queue_table_name);
+    RAISE NOTICE 'Table "%" has been removed.', queue_table_name;
 END;
 $BODY$
 LANGUAGE 'plpgsql';
@@ -44,6 +48,8 @@ LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION read_queue_entry(queue_name text) RETURNS SETOF text AS
 $BODY$
+DECLARE
+    queue_table_name text := 'queue_' || queue_name;
 BEGIN
     RETURN QUERY EXECUTE format('
         DELETE FROM %s 
@@ -55,7 +61,7 @@ BEGIN
             LIMIT 1 
         ) 
         RETURNING value'
-    , queue_name, queue_name);
+    , queue_table_name, queue_table_name);
 END;
 $BODY$
 LANGUAGE 'plpgsql';

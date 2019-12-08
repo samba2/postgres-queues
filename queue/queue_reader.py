@@ -8,7 +8,7 @@ cursor = conn.cursor()
 
 cursor.execute("SELECT drop_queue('orderdata')")
 # create table + trigger
-cursor.execute("SELECT make_queue('orderdata')")
+cursor.execute("SELECT create_queue('orderdata')")
 
 # some test data
 cursor.execute("INSERT INTO orderdata VALUES ('order1')")
