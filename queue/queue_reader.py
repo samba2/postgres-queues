@@ -21,28 +21,27 @@ def main():
         print("Received: " + entry)
 
 # library code
-#
-# TODO make more robust (ignore events without value)
+# TODO currently after we receive an event we read the DB twice:
+#  - once to read the entry
+#  - second time when we re-enter the loop 
+#  -> we can't rely on that event = entry, NOTIFY can be called manually without an INSERT
+#  -> use a generator to make this nicer
+#   or maybe this is ok for robustnes??
 def read_queue(queue_name, cursor):
-    def read_single_queue_entry():
+    cursor.execute(f"LISTEN {queue_name};")
+    while True:
+        # read as long as there are DB entries in the queue
         cursor.execute(f"SELECT read_queue_entry('{queue_name}')")
         entry = cursor.fetchone() 
         if entry:
             return entry[0]
-        else:
-            return None
 
-    cursor.execute(f"LISTEN {queue_name};")
-    entry = read_single_queue_entry()        
-    if entry:
-        return entry
-    if select.select([conn],[],[],60) == ([],[],[]):  # stops after 60 sec?
-        pass
-    else:
+        # block until event is received or timeout happens (100 years)
+        select.select([conn],[],[], 3153600000) == ([],[],[])
         conn.poll()
-        while conn.notifies:
-            notify = conn.notifies.pop(0)
-            return read_single_queue_entry()
+        # "eat" all notifications
+        conn.notifies[:] = []
 
 if __name__ == "__main__":
     main()
+    
