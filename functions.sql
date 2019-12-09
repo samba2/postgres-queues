@@ -5,10 +5,14 @@ DECLARE
     queue_table_name text := 'queue_' || queue_name;
 BEGIN
     EXECUTE format('
-        CREATE TABLE %s (  
+        CREATE TABLE IF NOT EXISTS %s (  
         value       text, 
         id          bigserial PRIMARY KEY)'
         , queue_table_name);
+
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS %s_trigger ON %s'
+        , queue_table_name, queue_table_name);
 
     EXECUTE format('
         CREATE TRIGGER %s_trigger
@@ -82,6 +86,10 @@ BEGIN
     EXECUTE format('
         COMMENT ON TABLE %s IS ''expire_after_days=%s'''
         , log_table_name, expire_after_days);
+
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS %s_trigger ON %s'
+        , log_table_name, log_table_name);
 
     EXECUTE format('
         CREATE TRIGGER %s_trigger
