@@ -6,13 +6,11 @@ conn = psycopg2.connect("dbname=postgres user=samba")
 conn.autocommit = True
 cursor = conn.cursor()
 
-cursor.execute("SELECT drop_queue('orderdata')")
-# create table + trigger
 cursor.execute("SELECT create_queue('orderdata')")
 
 # some test data
-cursor.execute("INSERT INTO orderdata VALUES ('order1')")
-cursor.execute("INSERT INTO orderdata VALUES ('order2')")
+cursor.execute("INSERT INTO queue_orderdata VALUES ('order1')")
+cursor.execute("INSERT INTO queue_orderdata VALUES ('order2')")
 
 # prod code
 def main():
@@ -28,7 +26,7 @@ def main():
 #  -> use a generator to make this nicer
 #   or maybe this is ok for robustnes??
 def read_queue(queue_name, cursor):
-    cursor.execute(f"LISTEN {queue_name};")
+    cursor.execute(f"LISTEN queue_{queue_name};")
     while True:
         # read as long as there are DB entries in the queue
         cursor.execute(f"SELECT read_queue_entry('{queue_name}')")
