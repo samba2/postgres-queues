@@ -54,5 +54,5 @@ See [Makefile](./Makefile) for how to:
 
 Currently Done
 --------------
-- simple FIFO queue
-- [Python example](./queue_reader.py)
+- [simple FIFO queue](./queue)
+- [log](./log) which keeps data

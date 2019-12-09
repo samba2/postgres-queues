@@ -19,12 +19,6 @@ def main():
         print("Received: " + entry)
 
 # library code
-# TODO currently after we receive an event we read the DB twice:
-#  - once to read the entry
-#  - second time when we re-enter the loop 
-#  -> we can't rely on that event = entry, NOTIFY can be called manually without an INSERT
-#  -> use a generator to make this nicer
-#   or maybe this is ok for robustnes??
 def read_log(log_name, cursor):
     cursor.execute(f"LISTEN log_{log_name};")
     while True:
