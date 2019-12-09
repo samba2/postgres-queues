@@ -50,12 +50,13 @@ DECLARE
     expire_after_days text;
 BEGIN
     -- get expire date metadata from table description
-    SELECT SPLIT_PART(OBJ_DESCRIPTION('log_b'::regclass), '=', 2) INTO expire_after_days;
+    -- TODO 'log_b' must be variable
+    -- SELECT SPLIT_PART(OBJ_DESCRIPTION('log_b'::regclass), '=', 2) INTO expire_after_days;
     -- delete old stuff
-    EXECUTE format('
-        DELETE FROM %s 
-        WHERE read_at IS NOT NULL 
-        AND inserted_at < now() - ''%s days''::interval', log_table_name, expire_after_days);
+    -- EXECUTE format('
+    --     DELETE FROM %s 
+    --     WHERE read_at IS NOT NULL 
+    --     AND inserted_at < now() - ''%s days''::interval', log_table_name, expire_after_days);
 
     RETURN QUERY EXECUTE format('
         UPDATE %s SET read_at = now()
