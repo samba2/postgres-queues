@@ -10,23 +10,22 @@ def main():
     while True:
         # TODO move transaction to outside
         # https://github.com/malthe/pq/blob/b3381fee2f1a683c4178fd694a9c32af3aec5f55/pq/__init__.py#L182
-        entry = read_log("orderdata", None)
-        # raise
+        entry = read_log("orderdata", conn)
         print("Received: " + entry)
 
-
-# library code
-def read_log(log_name, cursor):
+# # library code
+def read_log(log_name, conn):
+    with transaction(conn) as cursor:
+        cursor.execute(f"LISTEN log_{log_name};")
     while True:
+        # read as long as there are DB entries in the queue        
         with transaction(conn) as cursor:
-            # read as long as there are DB entries in the queue
             cursor.execute(f"SELECT read_log_entry('{log_name}')")
             entry = cursor.fetchone() 
-            cursor.execute(f"LISTEN log_{log_name};")
             if entry:
                 return entry[0]
 
-        # block until event is received or timeout happens (100 years)
+            # block until event is received or timeout happens (100 years)
         select.select([conn],[],[], 3153600000) == ([],[],[])
         conn.poll()
         # "eat" all notifications
