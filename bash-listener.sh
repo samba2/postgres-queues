@@ -3,25 +3,25 @@
 set -uo pipefail
 #set -x
 
-trap ctrl_c INT
+trap "_ctrl_c" INT
 
-function main_loop() {
+function read_messages_forever() {
   local db_uri=$1
   local log_name=$2
   local per_message_callback=$3
   local message=
 
-  setup_poll "${db_uri}" "${log_name}"
+  _setup_poll "${db_uri}" "${log_name}"
   # read existing once
-  read_log_entries_from_db "${db_uri}" "${log_name}" "${per_message_callback}"
+  _read_log_entries_from_db "${db_uri}" "${log_name}" "${per_message_callback}"
   while read line; do
     if echo "${line}" | grep -q "Asynchronous notification \"log_${log_name}\" received"; then
-      read_log_entries_from_db "${db_uri}" "${log_name}" "${per_message_callback}"
+      _read_log_entries_from_db "${db_uri}" "${log_name}" "${per_message_callback}"
     fi
   done < ${output}
 }
 
-function setup_poll() {
+function _setup_poll() {
   local db_uri=$1
   local log_name=$2
 
@@ -32,11 +32,11 @@ function setup_poll() {
   psql "${db_uri}" < ${input}  2>&1 > ${output} &
   psql_pid=$!
   exec 3>${input}
-  poll_loop "${log_name}" &
+  _poll_loop "${log_name}" &
   poll_loop_pid=$!
 }
 
-function poll_loop() {
+function _poll_loop() {
   local log_name=$1
 
   echo "LISTEN log_${log_name};" >&3
@@ -46,7 +46,7 @@ function poll_loop() {
   done
 }
 
-function read_log_entries_from_db() {
+function _read_log_entries_from_db() {
   local db_uri=$1
   local log_name=$2
   local per_message_callback=$3
@@ -62,7 +62,7 @@ function read_log_entries_from_db() {
   done
 }
 
-function ctrl_c() {
+function _ctrl_c() {
   echo "Exiting"
   kill ${poll_loop_pid}
   kill ${psql_pid}
@@ -77,6 +77,4 @@ function print_message() {
   echo "Received: ${message}"
 }
 
-main_loop "postgres://samba@/postgres" "orderdata" "print_message"
-
-
+read_messages_forever "postgres://samba@/postgres" "orderdata" "print_message"
