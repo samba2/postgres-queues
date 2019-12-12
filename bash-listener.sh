@@ -5,43 +5,68 @@ set -uo pipefail
 
 trap ctrl_c INT
 
-CHANNEL="test"
-POSTGRES_URL="postgres://samba@/postgres"
+function main_loop() {
+  local db_uri=$1
+  local log_name=$2
+  local message=
 
-function ctrl_c() {
-    echo "Exiting"
-    kill ${poll_loop_pid}
-    kill ${psql_pid}
-    rm -f ${input}
-    rm -f ${output}
-    exit
+  setup_poll "${db_uri}" "${log_name}"
+  # read existing once
+  read_log_entries_from_db "${db_uri}" "${log_name}"
+  while read line; do
+    if echo "${line}" | grep -q "Asynchronous notification \"log_${log_name}\" received"; then
+      read_log_entries_from_db "${db_uri}" "${log_name}"
+    fi
+  done < ${output}
+}
+
+function setup_poll() {
+  local db_uri=$1
+  local log_name=$2
+
+  # setup polled psql in background
+  input=$(mktemp -t --dry-run psql-input.XXXX)
+  output=$(mktemp -t --dry-run psql-output.XXXX)
+  mkfifo ${input} ${output}
+  psql "${db_uri}" < ${input}  2>&1 > ${output} &
+  psql_pid=$!
+  exec 3>${input}
+  poll_loop "${log_name}" &
+  poll_loop_pid=$!
 }
 
 function poll_loop() {
-  echo "LISTEN ${CHANNEL};" >&3
+  local log_name=$1
+
+  echo "LISTEN log_${log_name};" >&3
   while true; do
     echo "SELECT 1;" >&3
     sleep 1
   done
 }
 
-# setup polled psql in background
-input=$(mktemp -t --dry-run psql-input.XXXX)
-output=$(mktemp -t --dry-run psql-output.XXXX)
-mkfifo ${input} ${output}
-psql "${POSTGRES_URL}" < ${input}  2>&1 > ${output} &
-psql_pid=$!
-exec 3>${input}
-poll_loop &
-poll_loop_pid=$!
+function read_log_entries_from_db() {
+  local db_uri=$1
+  local log_name=$2
+  local message=
 
-# main loop
-while read line; do
-  if echo "${line}" | grep -q "Asynchronous notification \"${CHANNEL}\" received"; then
-    echo "async"
-    # TODO fetch db
-#    message=$(echo "SELECT read_log_entry('orderdata')" | psql "postgres://samba@/postgres")
-#    echo "${message}"
-  fi
-done < ${output}
+  while true; do
+    message=$(echo "SELECT read_log_entry('${log_name}')" | psql -qtAX "${db_uri}")
+    if [ "${message}" ]; then
+      echo "${message}"
+    else
+      break
+    fi
+  done
+}
 
+function ctrl_c() {
+  echo "Exiting"
+  kill ${poll_loop_pid}
+  kill ${psql_pid}
+  rm -f ${input}
+  rm -f ${output}
+  exit
+}
+
+main_loop "postgres://samba@/postgres" "orderdata"
