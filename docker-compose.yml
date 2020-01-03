@@ -1,0 +1,16 @@
+# in Powershell run once:
+# $env:PWD=pwd
+version: '3.1'
+
+services:
+  
+  postgres:
+    image: postgres:11
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./queue:/mnt/src
+  
+  python3:
+    image: python:3.8.1-alpine
