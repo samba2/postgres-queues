@@ -19,6 +19,12 @@ Roadmap
 - keep common code 
 - optional: Bash implementation
 
+Next
+----
+- write int tests in python for psql functions
+- write int test for python function
+- split function and "prod" code
+- provide an example how to install function via pip git option
 
 Links
 -----

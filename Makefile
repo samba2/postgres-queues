@@ -2,10 +2,14 @@ services:
 	docker-compose up -d
 
 functions: services
-	docker-compose exec postgres psql --set=ON_ERROR_STOP=1 --username postgres --file=/mnt/src/functions.sql
+	docker-compose exec postgres psql --set=ON_ERROR_STOP=1 --username postgres --file=/data/functions.sql
+
+python3_tests:
+	docker-compose run python3 python -m unittest /data/hello_world_test.py
 
 clean:
 	docker-compose down --remove-orphans
+
 
 # VENV_DIR=/tmp/postgres-queue-example-venv
 

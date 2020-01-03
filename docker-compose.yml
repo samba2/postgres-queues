@@ -10,7 +10,9 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
     volumes:
-      - ./queue:/mnt/src
+      - ./queue:/data
   
   python3:
     image: python:3.8.1-alpine
+    volumes: 
+      - ./queue/python3:/data
